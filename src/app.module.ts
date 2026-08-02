@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
+import { UsersModule } from './users/users.module';
 import { envValidationSchema } from './config/env.validation';
 
 @Module({
@@ -14,7 +16,25 @@ import { envValidationSchema } from './config/env.validation';
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
     }),
+    // Connect to Postgres. forRootAsync lets us read the (already-validated)
+    // connection settings from ConfigService instead of hardcoding them.
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('DB_HOST'),
+        port: config.get<number>('DB_PORT'),
+        username: config.get<string>('DB_USER'),
+        password: config.get<string>('DB_PASSWORD'),
+        database: config.get<string>('DB_NAME'),
+        autoLoadEntities: true,
+        // DEV ONLY: auto-creates/updates tables to match your entities.
+        // Convenient now; we replace it with real migrations before prod.
+        synchronize: config.get<string>('NODE_ENV') !== 'production',
+      }),
+    }),
     HealthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

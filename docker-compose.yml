@@ -1,0 +1,38 @@
+# Local dev services for Aperture. Start with:  docker compose up -d
+#   postgres -> the app's database
+#   adminer  -> optional web UI to browse the database at http://localhost:8080
+# Values like ${DB_USER} are read from your .env file automatically.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aperture-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      # host_port:container_port — the app (on your host) reaches Postgres
+      # at localhost:${DB_PORT}; inside the container it always listens on 5432.
+      - '${DB_PORT}:5432'
+    volumes:
+      # Named volume so your data survives `docker compose down` / restarts.
+      - aperture-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:latest
+    container_name: aperture-adminer
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  aperture-pgdata:
