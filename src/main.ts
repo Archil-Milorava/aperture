@@ -1,10 +1,32 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Validate every incoming request against its DTO. whitelist strips
+  // properties that have no decorator; forbidNonWhitelisted rejects requests
+  // that send unexpected properties; transform turns plain JSON into real DTO
+  // instances (and coerces types, e.g. "3" -> 3).
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+
+  // Interactive, auto-generated API docs served at /api.
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Aperture API')
+    .setDescription('Media-sharing platform — senior-skills learning project')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api', app, document);
 
   // Pull the (already-validated) port from config rather than reading
   // process.env directly — one typed source of truth for configuration.
@@ -13,5 +35,6 @@ async function bootstrap() {
 
   await app.listen(port);
   Logger.log(`🚀 aperture is running on http://localhost:${port}`, 'Bootstrap');
+  Logger.log(`📚 API docs at http://localhost:${port}/api`, 'Bootstrap');
 }
 bootstrap();
