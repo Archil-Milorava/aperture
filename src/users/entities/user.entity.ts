@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import {
   Column,
   CreateDateColumn,
@@ -6,11 +7,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-/**
- * A row in the "users" table. Each decorator maps a TS property to a DB column;
- * TypeORM uses this class to build queries AND (in dev) to create the table.
- * The `!` tells strict TypeScript "TypeORM assigns this, trust me."
- */
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -19,7 +15,7 @@ export class User {
   @Column({ unique: true })
   email!: string;
 
-  // Never store the raw password. This holds the bcrypt hash (added next slice).
+  @Exclude()
   @Column({ name: 'password_hash' })
   passwordHash!: string;
 

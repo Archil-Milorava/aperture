@@ -14,6 +14,7 @@ export class HealthController {
    * Liveness check. Load balancers / container orchestrators (AWS ECS)
    * hit this to decide whether the instance is healthy.
    */
+  // @ApiExcludeEndpoint()
   @ApiOkResponse({
     description: 'Service is up; returns process uptime and current timestamp.',
   })
