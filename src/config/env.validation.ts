@@ -10,4 +10,12 @@ export const envValidationSchema = Joi.object({
     .valid('development', 'test', 'production')
     .default('development'),
   PORT: Joi.number().port().default(3000),
+
+  // Database (PostgreSQL). No defaults on the credentials on purpose —
+  // the app should refuse to start if they're missing.
+  DB_HOST: Joi.string().default('localhost'),
+  DB_PORT: Joi.number().port().default(5432),
+  DB_USER: Joi.string().required(),
+  DB_PASSWORD: Joi.string().required(),
+  DB_NAME: Joi.string().required(),
 });
