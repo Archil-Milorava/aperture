@@ -30,9 +30,9 @@ import { envValidationSchema } from './config/env.validation';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        // DEV ONLY: auto-creates/updates tables to match your entities.
-        // Convenient now; we replace it with real migrations before prod.
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
+        // Migrations now own the schema. Never synchronize — it can silently
+        // drop columns/data. Apply changes with: npm run migration:run
+        synchronize: false,
       }),
     }),
     HealthModule,
