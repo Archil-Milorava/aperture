@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { PostsModule } from './posts/posts.module';
 import { envValidationSchema } from './config/env.validation';
 
 @Module({
@@ -38,6 +39,7 @@ import { envValidationSchema } from './config/env.validation';
     HealthModule,
     UsersModule,
     AuthModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [
