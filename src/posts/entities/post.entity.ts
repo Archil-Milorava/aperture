@@ -4,10 +4,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Like } from '../../likes/entities/like.entity';
 
 @Entity('posts')
 export class Post {
@@ -32,4 +34,11 @@ export class Post {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
+
+  // Inverse side of Like.post — adds NO column; lets us count likes per post.
+  @OneToMany(() => Like, (like) => like.post)
+  likes!: Like[];
+
+  // Filled in by loadRelationCountAndMap in queries (not a stored column).
+  likeCount?: number;
 }
