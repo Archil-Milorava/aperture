@@ -1,7 +1,11 @@
-# Local dev services for Aperture. Start with:  docker compose up -d
-#   postgres -> the app's database
-#   adminer  -> optional web UI to browse the database at http://localhost:8080
-# Values like ${DB_USER} are read from your .env file automatically.
+# Local dev + full-stack run for Aperture.
+#
+#   docker compose up --build     -> the WHOLE stack: Postgres + migrations + app
+#   docker compose up -d postgres adminer   -> only the backing services
+#
+# Values like ${DB_USER} are read from your .env file automatically. The app and
+# migrate services reach Postgres by its SERVICE NAME (`postgres`) on its
+# CONTAINER port (5432) — NOT localhost / the host-mapped port.
 services:
   postgres:
     image: postgres:16-alpine
@@ -12,8 +16,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      # host_port:container_port — the app (on your host) reaches Postgres
-      # at localhost:${DB_PORT}; inside the container it always listens on 5432.
+      # host_port:container_port — the host reaches Postgres at localhost:${DB_PORT};
+      # inside the Docker network it always listens on 5432.
       - '${DB_PORT}:5432'
     volumes:
       # Named volume so your data survives `docker compose down` / restarts.
@@ -23,6 +27,70 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # One-shot job: apply pending migrations, then exit. The app waits for this to
+  # finish SUCCESSFULLY before it starts, so it never talks to an empty schema.
+  # It reuses the `builder` stage (which has the source + ts-node + your migration
+  # script), so the command run here is exactly the one you run locally.
+  migrate:
+    build:
+      context: .
+      target: builder
+    image: aperture-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres # service name on the Docker network, not localhost
+      DB_PORT: 5432 # container port, not the host-mapped ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    command: npm run migration:run
+    restart: 'no'
+
+  # The Nest app, built into the small production image (Dockerfile `runner`).
+  app:
+    build:
+      context: .
+      target: runner
+    image: aperture-app
+    container_name: aperture-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully # wait for migrations to finish
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+    ports:
+      # Defaults to 3000; override with APP_PORT=3001 if 3000 is busy on the host.
+      - '${APP_PORT:-3000}:3000'
+    volumes:
+      # Persist uploaded images across restarts (until they move to S3 in Phase B).
+      - aperture-uploads:/app/uploads
+    healthcheck:
+      # No curl/wget in the slim image — use Node's built-in fetch to hit /health.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   adminer:
     image: adminer:latest
@@ -36,3 +104,4 @@ services:
 
 volumes:
   aperture-pgdata:
+  aperture-uploads:

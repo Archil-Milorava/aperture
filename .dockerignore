@@ -1,0 +1,37 @@
+# Everything here is EXCLUDED from the Docker build context — the set of files
+# Docker copies before building. A lean context = faster builds, smaller images,
+# and (critically) no secrets or host-specific junk baked into the image.
+
+# Installed on the HOST (maybe for a different OS/CPU). We run a clean `npm ci`
+# inside the image so native modules like bcrypt are built for Linux.
+node_modules
+
+# Build output — regenerated inside the image by `npm run build`.
+dist
+build
+
+# Test coverage / logs
+coverage
+*.log
+npm-debug.log*
+
+# Secrets & env. The container gets its config from docker-compose, not a file.
+.env
+.env.*
+!.env.example
+
+# Locally uploaded images — the container has its own uploads volume.
+uploads
+
+# Git, editor, OS noise
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+*.swp
+
+# Docker's own files don't need to be inside the image.
+Dockerfile
+.dockerignore
+docker-compose.yml
