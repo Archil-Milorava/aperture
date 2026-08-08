@@ -42,6 +42,10 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3000);
 
+  // ⚠️ DELIBERATE ERROR to test CI — a string assigned to a number. Remove after.
+  const deliberateBug: number = 'this is not a number';
+  Logger.log(`deliberate bug: ${deliberateBug}`);
+
   await app.listen(port);
   Logger.log(`🚀 aperture is running on http://localhost:${port}`, 'Bootstrap');
   Logger.log(`📚 API docs at http://localhost:${port}/api`, 'Bootstrap');
