@@ -46,4 +46,7 @@ async function bootstrap() {
   Logger.log(`🚀 aperture is running on http://localhost:${port}`, 'Bootstrap');
   Logger.log(`📚 API docs at http://localhost:${port}/api`, 'Bootstrap');
 }
-bootstrap();
+// `void` says "intentionally not awaiting" — satisfies the no-floating-promises
+// lint rule and makes clear any startup error is handled by Node's default
+// unhandled-rejection behavior (crash + non-zero exit), which is what we want.
+void bootstrap();

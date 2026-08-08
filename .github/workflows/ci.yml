@@ -1,0 +1,57 @@
+# Continuous Integration — runs automatically on GitHub's servers.
+# It verifies every change on a clean machine so broken code never reaches main.
+name: CI
+
+# WHEN this runs:
+#   - push to main         → catches anything that lands on the main branch
+#   - pull_request         → the important one: checks a PR BEFORE it's merged
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: this workflow only needs to read the repo, nothing more.
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint, build, test & docker
+    # The "runner": a fresh Ubuntu virtual machine GitHub spins up for this job.
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Copy the repository's code onto the runner.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Install Node — the exact version from .nvmrc (single source of truth),
+      #    and cache the npm download folder between runs (keyed on the lockfile)
+      #    so installs are fast.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # 3. Install dependencies straight from package-lock.json — reproducible,
+      #    and fails if the lockfile is out of sync with package.json.
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Lint — CHECK only (no --fix) and fail on any warning.
+      - name: Lint
+        run: npm run lint:ci
+
+      # 5. Compile TypeScript — fails the build on any type error.
+      - name: Build
+        run: npm run build
+
+      # 6. Run unit tests.
+      - name: Test
+        run: npm test
+
+      # 7. Build the Docker image to prove the Dockerfile still works end to end.
+      #    We only BUILD it here (no push) — publishing/deploying comes later.
+      - name: Build Docker image
+        run: docker build -t aperture:ci .
