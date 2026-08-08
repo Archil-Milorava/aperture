@@ -62,6 +62,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully # wait for migrations to finish
+      localstack:
+        condition: service_healthy # S3 must be ready before the app uploads
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -72,6 +74,14 @@ services:
       DB_NAME: ${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      # AWS / S3 — these point at LocalStack (fake AWS). The keys are dummy
+      # values LocalStack accepts; real AWS would use real creds via .env.
+      AWS_REGION: us-east-1
+      AWS_S3_BUCKET: aperture-uploads
+      AWS_S3_ENDPOINT: http://localstack:4566 # internal service name, not localhost
+      AWS_S3_PUBLIC_ENDPOINT: http://localhost:4566 # browser-reachable, for signed URLs
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
     ports:
       # Defaults to 3000; override with APP_PORT=3001 if 3000 is busy on the host.
       - '${APP_PORT:-3000}:3000'
@@ -91,6 +101,22 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  # LocalStack — a fake AWS that runs locally, so we can learn S3 with no AWS
+  # account and no cost. We only enable the S3 service here.
+  localstack:
+    image: localstack/localstack:3
+    container_name: aperture-localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: s3 # only start S3, nothing else
+    ports:
+      - '4566:4566' # LocalStack's single "edge" port for all AWS APIs
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4566/_localstack/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   adminer:
     image: adminer:latest

@@ -31,3 +31,22 @@ services:
       # node_modules all come from the image, so they stay stable.
       - ./src:/app/src
       - aperture-uploads:/app/uploads
+
+  # Dev-only: a web UI to browse the S3 bucket like folders (view/upload/delete).
+  # Open http://localhost:8081 once the stack is up. It reaches LocalStack over
+  # the internal network, so no signed URLs are needed here.
+  s3manager:
+    image: cloudlena/s3manager:latest
+    container_name: aperture-s3manager
+    restart: unless-stopped
+    environment:
+      ACCESS_KEY_ID: test
+      SECRET_ACCESS_KEY: test
+      ENDPOINT: localstack:4566 # internal service name
+      REGION: us-east-1
+      USE_SSL: 'false'
+    ports:
+      - '8081:8080'
+    depends_on:
+      localstack:
+        condition: service_healthy

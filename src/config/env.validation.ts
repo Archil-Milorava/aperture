@@ -22,4 +22,14 @@ export const envValidationSchema = Joi.object({
   // Auth (JWT)
   JWT_SECRET: Joi.string().min(16).required(),
   JWT_EXPIRES_IN: Joi.number().default(3600), // access-token lifetime, in seconds
+
+  // AWS / S3. In dev these point at LocalStack; in real AWS you'd drop
+  // AWS_S3_ENDPOINT and supply real credentials.
+  AWS_REGION: Joi.string().default('us-east-1'),
+  AWS_S3_BUCKET: Joi.string().required(),
+  AWS_S3_ENDPOINT: Joi.string().uri().optional(), // set for LocalStack; unset for real AWS
+  AWS_S3_PUBLIC_ENDPOINT: Joi.string().uri().optional(), // browser-facing endpoint for signed URLs (LocalStack)
+  AWS_S3_URL_EXPIRES: Joi.number().default(900), // signed URL lifetime, in seconds
+  AWS_ACCESS_KEY_ID: Joi.string().required(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().required(),
 });

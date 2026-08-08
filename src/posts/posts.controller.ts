@@ -23,6 +23,7 @@ import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { Post } from './entities/post.entity';
 import { multerImageOptions } from './multer.config';
+import { StorageService } from '../storage/storage.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
@@ -30,7 +31,10 @@ import type { AuthUser } from '../auth/strategies/jwt.strategy';
 @ApiTags('Posts')
 @Controller('posts')
 export class PostsController {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(
+    private readonly postsService: PostsService,
+    private readonly storageService: StorageService,
+  ) {}
 
   @HttpPost() // aliased so it doesn't clash with the Post entity import
   @UseGuards(JwtAuthGuard) // must be logged in to post
@@ -48,7 +52,7 @@ export class PostsController {
     },
   })
   @ApiCreatedResponse({ description: 'Post created.' })
-  create(
+  async create(
     @CurrentUser() user: AuthUser,
     @Body() dto: CreatePostDto,
     @UploadedFile() file: Express.Multer.File,
@@ -56,12 +60,10 @@ export class PostsController {
     if (!file) {
       throw new BadRequestException('An image file is required');
     }
+    // upload the image to S3 first; store the returned object key on the post
+    const imageKey = await this.storageService.uploadImage(file);
     // the author comes from the token, never from the request body
-    return this.postsService.create(
-      user.userId,
-      dto,
-      `/uploads/${file.filename}`,
-    );
+    return this.postsService.create(user.userId, dto, imageKey);
   }
 
   @Get()
