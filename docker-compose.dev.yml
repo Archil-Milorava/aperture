@@ -1,0 +1,33 @@
+# Development overrides — layered ON TOP of docker-compose.yml.
+#
+# Used automatically by:  npm run start:dev   (and npm run start:dev:build)
+#   → docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# The base file runs the app from the compiled, production `runner` image. These
+# overrides swap the app into a DEV container that:
+#   - runs from the `builder` stage (which has devDependencies + the Nest CLI),
+#   - runs `nest start --watch` so it recompiles on every save (hot reload),
+#   - reads its source from a live bind-mount of ./src, so edits on your Mac
+#     appear instantly inside the container.
+#
+# Note: we do NOT mount node_modules. The container keeps its own Linux-built
+# dependencies (including the native bcrypt binary); your host's node_modules is
+# never used inside the container.
+services:
+  migrate:
+    # Bind-mount source so a freshly generated migration is applied without an
+    # image rebuild (the migrate job runs your .ts migrations via ts-node).
+    volumes:
+      - ./src:/app/src
+
+  app:
+    build:
+      target: builder # dev needs devDependencies + the `nest` CLI
+    command: npm run start:watch # nest start --watch — recompiles on change
+    environment:
+      NODE_ENV: development
+    volumes:
+      # Live-mount ONLY source. tsconfig, nest-cli.json, package.json and
+      # node_modules all come from the image, so they stay stable.
+      - ./src:/app/src
+      - aperture-uploads:/app/uploads
