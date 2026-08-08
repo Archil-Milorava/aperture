@@ -5,6 +5,7 @@ import { Post } from './entities/post.entity';
 import { CreatePostDto } from './dto/create-post.dto';
 import { User } from '../users/entities/user.entity';
 import { Like } from '../likes/entities/like.entity';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class PostsService {
@@ -13,6 +14,7 @@ export class PostsService {
     private readonly postsRepository: Repository<Post>,
     @InjectRepository(Like)
     private readonly likesRepository: Repository<Like>,
+    private readonly storageService: StorageService,
   ) {}
 
   async create(
@@ -37,6 +39,14 @@ export class PostsService {
       order: { createdAt: 'DESC' },
     });
     await this.attachLikeCounts(posts);
+    // swap each stored S3 key for a temporary, viewable signed URL
+    await Promise.all(
+      posts.map(async (post) => {
+        post.imageUrl = await this.storageService.getSignedImageUrl(
+          post.imageUrl,
+        );
+      }),
+    );
     return posts;
   }
 
@@ -48,6 +58,8 @@ export class PostsService {
     post.likeCount = await this.likesRepository.count({
       where: { post: { id } },
     });
+    // swap the stored S3 key for a temporary, viewable signed URL
+    post.imageUrl = await this.storageService.getSignedImageUrl(post.imageUrl);
     return post;
   }
 
