@@ -1,5 +1,5 @@
 import { ClassSerializerInterceptor, Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -9,6 +9,8 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { PostsModule } from './posts/posts.module';
 import { LikesModule } from './likes/likes.module';
+import { RedisModule } from './redis/redis.module';
+import { RateLimitGuard } from './common/guards/rate-limit.guard';
 import { envValidationSchema } from './config/env.validation';
 
 @Module({
@@ -37,6 +39,7 @@ import { envValidationSchema } from './config/env.validation';
         synchronize: false,
       }),
     }),
+    RedisModule,
     HealthModule,
     UsersModule,
     AuthModule,
@@ -49,6 +52,8 @@ import { envValidationSchema } from './config/env.validation';
     // Activates @Exclude()/@Expose() on returned entities, so responses never
     // leak sensitive fields like passwordHash. Registered globally.
     { provide: APP_INTERCEPTOR, useClass: ClassSerializerInterceptor },
+    // Enforces @RateLimit(...) on any route that declares it.
+    { provide: APP_GUARD, useClass: RateLimitGuard },
   ],
 })
 export class AppModule {}

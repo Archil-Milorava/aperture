@@ -32,4 +32,8 @@ export const envValidationSchema = Joi.object({
   AWS_S3_URL_EXPIRES: Joi.number().default(900), // signed URL lifetime, in seconds
   AWS_ACCESS_KEY_ID: Joi.string().required(),
   AWS_SECRET_ACCESS_KEY: Joi.string().required(),
+
+  // Redis (caching, rate limiting)
+  REDIS_HOST: Joi.string().default('localhost'),
+  REDIS_PORT: Joi.number().port().default(6379),
 });
