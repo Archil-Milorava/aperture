@@ -9,6 +9,7 @@ import {
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import type { AuthUser } from './strategies/jwt.strategy';
@@ -24,6 +25,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200) // a successful login returns 200, not the default POST 201
+  @RateLimit(5, 60) // max 5 attempts per minute per IP — brute-force protection
   @ApiOkResponse({ description: 'Returns a JWT access token.' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);

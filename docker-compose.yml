@@ -64,6 +64,8 @@ services:
         condition: service_completed_successfully # wait for migrations to finish
       localstack:
         condition: service_healthy # S3 must be ready before the app uploads
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -82,6 +84,8 @@ services:
       AWS_S3_PUBLIC_ENDPOINT: http://localhost:4566 # browser-reachable, for signed URLs
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
+      REDIS_HOST: redis # service name on the Docker network
+      REDIS_PORT: 6379
     ports:
       # Defaults to 3000; override with APP_PORT=3001 if 3000 is busy on the host.
       - '${APP_PORT:-3000}:3000'
@@ -101,6 +105,19 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  # Redis — in-memory store used for caching and rate limiting.
+  redis:
+    image: redis:7-alpine
+    container_name: aperture-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # LocalStack — a fake AWS that runs locally, so we can learn S3 with no AWS
   # account and no cost. We only enable the S3 service here.

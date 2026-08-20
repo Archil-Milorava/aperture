@@ -42,8 +42,13 @@ export class UsersService {
     return user;
   }
 
-  // Used by the auth slice next session to look a user up at login time.
+  // Used at login. passwordHash is select:false, so we explicitly addSelect it
+  // here (this is the ONLY place that needs it).
   findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.email = :email', { email })
+      .getOne();
   }
 }
