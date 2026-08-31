@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { PostsModule } from './posts/posts.module';
 import { LikesModule } from './likes/likes.module';
 import { RedisModule } from './redis/redis.module';
+import { KafkaModule } from './kafka/kafka.module';
 import { RateLimitGuard } from './common/guards/rate-limit.guard';
 import { envValidationSchema } from './config/env.validation';
 
@@ -40,6 +41,7 @@ import { envValidationSchema } from './config/env.validation';
       }),
     }),
     RedisModule,
+    KafkaModule,
     HealthModule,
     UsersModule,
     AuthModule,

@@ -7,11 +7,15 @@ import { User } from '../users/entities/user.entity';
 import { Like } from '../likes/entities/like.entity';
 import { StorageService } from '../storage/storage.service';
 import { RedisService } from '../redis/redis.service';
+import { KafkaProducerService } from '../kafka/kafka-producer.service';
 
 // The feed is cached under this key for a short time (seconds). Kept short so
 // new likes show up quickly; new posts bust the cache immediately (see create).
 const FEED_CACHE_KEY = 'posts:feed';
 const FEED_CACHE_TTL = 30;
+
+// Kafka topic we publish to when a post is created (a worker consumes it).
+const POST_CREATED_TOPIC = 'post.created';
 
 @Injectable()
 export class PostsService {
@@ -23,6 +27,7 @@ export class PostsService {
     private readonly likesRepository: Repository<Like>,
     private readonly storageService: StorageService,
     private readonly redis: RedisService,
+    private readonly kafka: KafkaProducerService,
   ) {}
 
   async create(
@@ -39,6 +44,22 @@ export class PostsService {
     const saved = await this.postsRepository.save(post);
     // a new post changes the feed → drop the cached copy so it's rebuilt
     await this.redis.del(FEED_CACHE_KEY);
+
+    // Publish an event so background workers can react (thumbnails, notifications…).
+    // Fire-and-forget: the post is already saved, so a Kafka failure must NOT fail
+    // the user's request — we just log it.
+    try {
+      await this.kafka.publish(POST_CREATED_TOPIC, saved.id, {
+        postId: saved.id,
+        authorId,
+        caption: saved.caption,
+        imageKey: saved.imageUrl,
+        occurredAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to publish ${POST_CREATED_TOPIC}: ${err}`);
+    }
+
     // reload so the response includes the eager author + likeCount
     return this.findById(saved.id);
   }

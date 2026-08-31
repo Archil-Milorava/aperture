@@ -36,4 +36,7 @@ export const envValidationSchema = Joi.object({
   // Redis (caching, rate limiting)
   REDIS_HOST: Joi.string().default('localhost'),
   REDIS_PORT: Joi.number().port().default(6379),
+
+  // Kafka (event streaming)
+  KAFKA_BROKER: Joi.string().default('localhost:9092'),
 });

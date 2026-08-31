@@ -32,6 +32,15 @@ services:
       - ./src:/app/src
       - aperture-uploads:/app/uploads
 
+  # Dev override: run the worker from the builder stage in watch mode, so it
+  # hot-reloads on source edits — same as the app.
+  worker:
+    build:
+      target: builder
+    command: npm run start:worker # nest start --watch --entryFile worker
+    volumes:
+      - ./src:/app/src
+
   # Dev-only: a web UI to browse the S3 bucket like folders (view/upload/delete).
   # Open http://localhost:8081 once the stack is up. It reaches LocalStack over
   # the internal network, so no signed URLs are needed here.
@@ -62,4 +71,20 @@ services:
       - '5540:5540'
     depends_on:
       redis:
+        condition: service_healthy
+
+  # Dev-only: Kafka UI — browse topics, partitions and messages in the browser
+  # at http://localhost:8082. Connects to the broker over the internal network.
+  kafka-ui:
+    image: kafbat/kafka-ui:latest
+    container_name: aperture-kafka-ui
+    restart: unless-stopped
+    environment:
+      KAFKA_CLUSTERS_0_NAME: aperture
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092 # internal service name
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    ports:
+      - '8082:8080'
+    depends_on:
+      kafka:
         condition: service_healthy
