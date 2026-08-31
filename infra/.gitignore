@@ -1,0 +1,18 @@
+# Terraform local state — can contain secrets (DB passwords, etc). NEVER commit.
+*.tfstate
+*.tfstate.*
+
+# Downloaded provider plugins / local cache (large, machine-specific).
+.terraform/
+.terraform.tfstate.lock.info
+
+# Variable files that may hold secrets (an *.tfvars.example is fine to commit).
+*.tfvars
+!*.tfvars.example
+
+# Crash logs
+crash.log
+crash.*.log
+
+# NOTE: .terraform.lock.hcl is intentionally NOT ignored — it pins provider
+# versions/hashes and SHOULD be committed for reproducible installs.
