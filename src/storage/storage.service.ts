@@ -111,4 +111,29 @@ export class StorageService implements OnModuleInit {
       expiresIn: this.urlExpiresIn,
     });
   }
+
+  /** Download an object's raw bytes (used by the worker to build thumbnails). */
+  async getObject(key: string): Promise<Buffer> {
+    const res = await this.s3.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    const bytes = await res.Body!.transformToByteArray();
+    return Buffer.from(bytes);
+  }
+
+  /** Upload raw bytes under a given key (e.g. a generated thumbnail). */
+  async putObject(
+    key: string,
+    body: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+  }
 }
