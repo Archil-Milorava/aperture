@@ -7,3 +7,8 @@ output "s3_bucket_name" {
   description = "S3 bucket that holds post images"
   value       = aws_s3_bucket.uploads.bucket
 }
+
+output "db_endpoint" {
+  description = "Postgres host:port the app connects to"
+  value       = aws_db_instance.postgres.endpoint
+}
