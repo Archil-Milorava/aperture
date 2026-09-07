@@ -18,6 +18,7 @@ export const envValidationSchema = Joi.object({
   DB_USER: Joi.string().required(),
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().required(),
+  DB_SSL: Joi.string().valid('true', 'false').default('false'), // 'true' for RDS
 
   // Auth (JWT)
   JWT_SECRET: Joi.string().min(16).required(),
@@ -30,8 +31,10 @@ export const envValidationSchema = Joi.object({
   AWS_S3_ENDPOINT: Joi.string().uri().optional(), // set for LocalStack; unset for real AWS
   AWS_S3_PUBLIC_ENDPOINT: Joi.string().uri().optional(), // browser-facing endpoint for signed URLs (LocalStack)
   AWS_S3_URL_EXPIRES: Joi.number().default(900), // signed URL lifetime, in seconds
-  AWS_ACCESS_KEY_ID: Joi.string().required(),
-  AWS_SECRET_ACCESS_KEY: Joi.string().required(),
+  // Optional: set for LocalStack (test/test); unset in real AWS, where the app
+  // uses its IAM task role instead of static keys.
+  AWS_ACCESS_KEY_ID: Joi.string().optional(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
 
   // Redis (caching, rate limiting)
   REDIS_HOST: Joi.string().default('localhost'),

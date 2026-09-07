@@ -12,3 +12,8 @@ output "db_endpoint" {
   description = "Postgres host:port the app connects to"
   value       = aws_db_instance.postgres.endpoint
 }
+
+output "app_url" {
+  description = "Public URL of the deployed app"
+  value       = "http://${aws_lb.app.dns_name}"
+}

@@ -32,35 +32,38 @@ export class StorageService implements OnModuleInit {
     const endpoint = this.config.get<string>('AWS_S3_ENDPOINT');
     this.bucket = this.config.get<string>('AWS_S3_BUCKET')!;
 
+    // Only pass explicit credentials when they're provided (LocalStack uses
+    // test/test). In real AWS we leave them unset, so the SDK falls back to its
+    // default provider chain — which on ECS means the task's IAM role. Spreading
+    // `credentials` conditionally lets the same code work in both places.
+    const accessKeyId = this.config.get<string>('AWS_ACCESS_KEY_ID');
+    const secretAccessKey = this.config.get<string>('AWS_SECRET_ACCESS_KEY');
+    const credentials =
+      accessKeyId && secretAccessKey
+        ? { credentials: { accessKeyId, secretAccessKey } }
+        : {};
+
     this.s3 = new S3Client({
       region: this.config.get<string>('AWS_REGION'),
       // For LocalStack we hit a custom endpoint and must use "path-style" URLs
-      // (endpoint/bucket/key) instead of the default virtual-hosted style
-      // (bucket.endpoint/key), which LocalStack doesn't serve. Real AWS sets no
-      // endpoint, so this block is skipped there.
+      // (endpoint/bucket/key) instead of the default virtual-hosted style, which
+      // LocalStack doesn't serve. Real AWS sets no endpoint, so this is skipped.
       ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
-      credentials: {
-        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID')!,
-        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY')!,
-      },
+      ...credentials,
     });
 
     const publicEndpoint = this.config.get<string>('AWS_S3_PUBLIC_ENDPOINT');
     this.urlExpiresIn = this.config.get<number>('AWS_S3_URL_EXPIRES', 900);
 
     // A SECOND client used only to SIGN read URLs. Signing is offline (no network
-    // call), so we sign against the endpoint the BROWSER will use (localhost),
-    // even though uploads go through the internal endpoint (localstack). On real
-    // AWS both endpoints are unset, so this is just a normal S3 client.
+    // call), so we sign against the endpoint the BROWSER will use. On real AWS
+    // both endpoints are unset, so this is just a normal S3 client.
     this.s3ForUrls = new S3Client({
       region: this.config.get<string>('AWS_REGION'),
       ...(publicEndpoint
         ? { endpoint: publicEndpoint, forcePathStyle: true }
         : {}),
-      credentials: {
-        accessKeyId: this.config.get<string>('AWS_ACCESS_KEY_ID')!,
-        secretAccessKey: this.config.get<string>('AWS_SECRET_ACCESS_KEY')!,
-      },
+      ...credentials,
     });
   }
 

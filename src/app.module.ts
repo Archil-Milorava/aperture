@@ -35,6 +35,13 @@ import { envValidationSchema } from './config/env.validation';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
         autoLoadEntities: true,
+        // Managed databases like AWS RDS require encrypted (SSL) connections.
+        // Enable it with DB_SSL=true; rejectUnauthorized:false accepts RDS's cert
+        // without us bundling its CA — still encrypted, just not CA-verified.
+        ssl:
+          config.get<string>('DB_SSL') === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
         // Migrations now own the schema. Never synchronize — it can silently
         // drop columns/data. Apply changes with: npm run migration:run
         synchronize: false,
