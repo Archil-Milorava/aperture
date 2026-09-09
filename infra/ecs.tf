@@ -96,6 +96,7 @@ resource "aws_ecs_task_definition" "app" {
         { name = "DB_USER", value = "aperture" },
         { name = "DB_NAME", value = "aperture" },
         { name = "DB_SSL", value = "true" }, # RDS requires encrypted connections
+        { name = "DB_RUN_MIGRATIONS", value = "true" }, # app creates tables on boot
         { name = "REDIS_HOST", value = "localhost" },
         { name = "REDIS_PORT", value = "6379" },
         { name = "KAFKA_BROKER", value = "localhost:9092" },
