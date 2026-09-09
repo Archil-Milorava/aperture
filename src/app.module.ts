@@ -45,6 +45,12 @@ import { envValidationSchema } from './config/env.validation';
         // Migrations now own the schema. Never synchronize — it can silently
         // drop columns/data. Apply changes with: npm run migration:run
         synchronize: false,
+        // The image contains the COMPILED migrations (dist/…). When
+        // DB_RUN_MIGRATIONS=true (set in the cloud), the app applies any pending
+        // migrations on startup — so a fresh RDS gets its tables with no separate
+        // step. Left off locally, where the migrate container handles it.
+        migrations: ['dist/database/migrations/*.js'],
+        migrationsRun: config.get<string>('DB_RUN_MIGRATIONS') === 'true',
       }),
     }),
     RedisModule,

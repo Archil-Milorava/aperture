@@ -19,6 +19,7 @@ export const envValidationSchema = Joi.object({
   DB_PASSWORD: Joi.string().required(),
   DB_NAME: Joi.string().required(),
   DB_SSL: Joi.string().valid('true', 'false').default('false'), // 'true' for RDS
+  DB_RUN_MIGRATIONS: Joi.string().valid('true', 'false').default('false'), // 'true' in cloud
 
   // Auth (JWT)
   JWT_SECRET: Joi.string().min(16).required(),
