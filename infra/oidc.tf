@@ -35,10 +35,16 @@ data "aws_iam_policy_document" "github_actions_assume" {
     # Only a workflow run triggered by a push to main can assume this role —
     # not a PR, not another branch, not a fork. Tightest scope that still
     # matches "deploy on push to main."
+    #
+    # NOTE: this is "repo:OWNER@ownerId/REPO@repoId:ref:..." rather than the
+    # plainer "repo:OWNER/REPO:ref:...". GitHub adds the numeric owner/repo
+    # IDs when either has ever been renamed, so a stale name can't silently
+    # match a different, later owner of it. Confirmed via CloudTrail (the
+    # actual sub claim a real run presented), not guessed.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:Archil-Milorava/aperture:ref:refs/heads/main"]
+      values   = ["repo:Archil-Milorava@10231072/aperture@1318346174:ref:refs/heads/main"]
     }
   }
 }
