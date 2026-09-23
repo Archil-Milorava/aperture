@@ -17,3 +17,8 @@ output "app_url" {
   description = "Public URL of the deployed app"
   value       = "http://${aws_lb.app.dns_name}"
 }
+
+output "github_actions_role_arn" {
+  description = "Role ARN the GitHub Actions workflow assumes to deploy"
+  value       = aws_iam_role.github_actions_deploy.arn
+}

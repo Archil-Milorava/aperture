@@ -55,3 +55,83 @@ jobs:
       #    We only BUILD it here (no push) — publishing/deploying comes later.
       - name: Build Docker image
         run: docker build -t aperture:ci .
+
+  deploy:
+    name: Build, push & deploy
+    # Only after the job above is fully green, and only for an actual push to
+    # main (not a PR) — a PR run of this workflow stops after the `ci` job.
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # This job (only) needs id-token: write — that's what lets it request an
+    # OIDC token from GitHub to trade for temporary AWS credentials below.
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Exchanges this run's GitHub-issued OIDC token for short-lived AWS
+      # credentials via the role trust set up in infra/oidc.tf — no static
+      # AWS access key stored anywhere in GitHub.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::861023264252:role/aperture-github-actions-deploy
+          aws-region: eu-north-1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.0"
+
+      - name: Terraform init
+        run: terraform -chdir=infra init
+
+      # The ECR repo must exist before we can push an image to it. A no-op
+      # if it's already there (the routine "infra already up" case) — only
+      # matters the first time, when everything's destroyed.
+      - name: Ensure ECR repository exists
+        run: terraform -chdir=infra apply -auto-approve -target=aws_ecr_repository.app
+
+      - name: Get ECR repository URL
+        id: ecr
+        run: echo "url=$(terraform -chdir=infra output -raw ecr_repository_url)" >> "$GITHUB_OUTPUT"
+
+      # Cross-compiling for ARM64 (Graviton Fargate, see infra/ecs.tf) on an
+      # x86 GitHub runner needs QEMU + buildx — a plain `docker build` here
+      # would silently produce an AMD64 image that Fargate can't run.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.url }}:latest
+            ${{ steps.ecr.outputs.url }}:${{ github.sha }}
+
+      # Creates everything from scratch if it's currently destroyed, or
+      # reconciles any drift if it's already up.
+      - name: Terraform apply
+        run: terraform -chdir=infra apply -auto-approve
+
+      # The task definition always points at the same ":latest" tag, so a
+      # new image landing in ECR doesn't by itself change anything an
+      # ALREADY-running service sees — it keeps its already-running tasks
+      # until told to redeploy.
+      - name: Force ECS to pick up the new image
+        run: aws ecs update-service --cluster aperture --service aperture --force-new-deployment --region eu-north-1
