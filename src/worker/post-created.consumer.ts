@@ -1,11 +1,5 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Consumer, Kafka } from 'kafkajs';
+import { Controller, Logger } from '@nestjs/common';
+import { EventPattern, Payload } from '@nestjs/microservices';
 import sharp from 'sharp';
 import { StorageService } from '../storage/storage.service';
 
@@ -18,47 +12,23 @@ interface PostCreatedEvent {
 }
 
 /**
- * Consumes `post.created` events and does background work. Runs in the WORKER
- * process (see src/worker.ts), completely separate from the HTTP app.
+ * Handles `post.created` events. Nest's Kafka microservice server (see
+ * src/worker.ts) subscribes to a topic per @EventPattern below and routes
+ * matching messages here — no manual connect/subscribe/parse required.
  */
-@Injectable()
-export class PostCreatedConsumer implements OnModuleInit, OnModuleDestroy {
+@Controller()
+export class PostCreatedConsumer {
   private readonly logger = new Logger(PostCreatedConsumer.name);
-  private readonly consumer: Consumer;
 
-  constructor(
-    private readonly config: ConfigService,
-    private readonly storage: StorageService,
-  ) {
-    const kafka = new Kafka({
-      clientId: 'aperture-worker',
-      brokers: [this.config.get<string>('KAFKA_BROKER')!],
-    });
-    // A consumer GROUP: run several workers with the same groupId and Kafka
-    // splits messages among them (each handled once). That's how you scale
-    // background processing horizontally.
-    this.consumer = kafka.consumer({ groupId: 'post-worker' });
-  }
+  constructor(private readonly storage: StorageService) {}
 
-  async onModuleInit(): Promise<void> {
-    await this.consumer.connect();
-    await this.consumer.subscribe({
-      topic: 'post.created',
-      fromBeginning: false, // only new events, not the whole history
-    });
-    await this.consumer.run({
-      eachMessage: async ({ message }) => {
-        const event = JSON.parse(
-          message.value?.toString() ?? '{}',
-        ) as PostCreatedEvent;
-        this.logger.log(
-          `📥 Received post.created for ${event.postId} — generating thumbnail…`,
-        );
-        await this.processPost(event);
-        this.logger.log(`✅ Done processing post ${event.postId}`);
-      },
-    });
-    this.logger.log('Worker is consuming post.created');
+  @EventPattern('post.created')
+  async handlePostCreated(@Payload() event: PostCreatedEvent): Promise<void> {
+    this.logger.log(
+      `📥 Received post.created for ${event.postId} — generating thumbnail…`,
+    );
+    await this.processPost(event);
+    this.logger.log(`✅ Done processing post ${event.postId}`);
   }
 
   // Real background work: download the original image from S3, shrink it, and
@@ -79,9 +49,5 @@ export class PostCreatedConsumer implements OnModuleInit, OnModuleDestroy {
     const thumbKey = `thumbnails/${name}.jpg`;
     await this.storage.putObject(thumbKey, thumbnail, 'image/jpeg');
     this.logger.log(`🖼️  Thumbnail saved to ${thumbKey}`);
-  }
-
-  async onModuleDestroy(): Promise<void> {
-    await this.consumer.disconnect();
   }
 }

@@ -10,6 +10,6 @@ import { StorageModule } from '../storage/storage.module';
  */
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), StorageModule],
-  providers: [PostCreatedConsumer],
+  controllers: [PostCreatedConsumer],
 })
 export class WorkerModule {}
